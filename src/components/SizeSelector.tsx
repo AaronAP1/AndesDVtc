@@ -31,15 +31,15 @@ export function SizeSelector({ value }: { value: SizeId }) {
   }, [open]);
 
   return (
-    <div className="absolute top-5 right-5 z-30">
+    <div className="absolute top-3 right-3 sm:top-5 sm:right-5 z-30">
       <div className="relative" ref={wrapperRef}>
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="backdrop-blur-xl bg-[#0D0D0D]/80 flex items-center gap-2 px-3.5 py-3 rounded-[10px] cursor-pointer"
+          className="backdrop-blur-xl bg-[#0D0D0D]/80 flex items-center gap-2 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-[10px] cursor-pointer"
           style={{ boxShadow: TRIGGER_SHADOW }}
         >
-          <span className="font-bold text-[12px] text-white">
+          <span className="font-bold text-[11px] sm:text-[12px] text-white whitespace-nowrap">
             {current.label}
           </span>
           <ChevronDownIcon

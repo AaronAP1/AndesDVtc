@@ -1,23 +1,11 @@
 "use client";
 
-import { Kbd } from "@/components/Kbd";
 import { SizeSelector } from "@/components/SizeSelector";
 import { TemplateGrid } from "@/components/TemplateGrid";
-import { UploadIcon } from "@/components/icons";
 import { LOCKED_SIZE } from "@/components/sizes";
 
 const PILL_SHADOW =
   "0 4px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.06)";
-const CTA_SHADOW =
-  "0 2px 12px rgba(255,255,255,0.15), 0 0 0 1px rgba(255,255,255,0.1)";
-
-const SHORTCUTS: { keys: string[]; label: string }[] = [
-  { keys: ["⌘", "V"], label: "Paste image" },
-  { keys: ["⌘", "Z"], label: "Undo" },
-  { keys: ["←", "→"], label: "Navigate" },
-  { keys: ["Esc"], label: "Back to grid" },
-  { keys: ["Enter"], label: "Edit card" },
-];
 
 const HERO_WORDS = ["Andes", "Map", "Empresas"];
 
@@ -37,19 +25,21 @@ export default function Home() {
 
       {/* Degradado superior que funde la barra con el contenido */}
       <div
-        className="absolute top-0 left-0 right-0 h-24 z-20 pointer-events-none"
+        className="absolute top-0 left-0 right-0 h-20 sm:h-24 z-20 pointer-events-none"
         style={{
           background:
             "linear-gradient(rgba(13,13,13,0.95) 0%, rgba(13,13,13,0.7) 50%, transparent 100%)",
         }}
       />
 
-      <div className="absolute top-5 left-5 z-30 flex items-center gap-2.5">
+      <div className="absolute top-3 left-3 sm:top-5 sm:left-5 z-30 flex items-center gap-2.5">
         <div
-          className="backdrop-blur-xl bg-[#0D0D0D]/80 flex items-center gap-2.5 px-[18px] py-3 rounded-[10px]"
+          className="backdrop-blur-xl bg-[#0D0D0D]/80 flex items-center gap-2.5 px-3 py-2.5 sm:px-[18px] sm:py-3 rounded-[10px]"
           style={{ boxShadow: PILL_SHADOW }}
         >
-          <span className="font-bold text-[12px] text-white">AndesMp | EMPRESAS</span>
+          <span className="font-bold text-[11px] sm:text-[12px] text-white whitespace-nowrap">
+            AndesMp | EMPRESAS
+          </span>
         </div>
       </div>
 
@@ -59,13 +49,10 @@ export default function Home() {
         className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: "none" }}
       >
-        <div
-          className="flex flex-col items-center"
-          style={{ paddingTop: 92, paddingBottom: 52 }}
-        >
+        <div className="flex flex-col items-center pt-[76px] pb-10 sm:pt-[92px] sm:pb-[52px]">
           <div className="text-center max-w-2xl px-4">
             <h1
-              className="text-white text-[clamp(32px,5vw,56px)] tracking-[-0.03em] font-bold"
+              className="text-white text-[clamp(28px,7vw,56px)] tracking-[-0.03em] font-bold text-balance"
               style={{ lineHeight: 1.1 }}
             >
               {HERO_WORDS.map((word, index) => (
@@ -80,7 +67,7 @@ export default function Home() {
                   {word}
                 </span>
               ))}
-              <br />
+              <br className="hidden sm:block" />
               <span
                 className="inline-block"
                 style={{ animation: "riseIn 600ms ease-out 270ms both" }}
@@ -89,86 +76,32 @@ export default function Home() {
               </span>
             </h1>
             <p
-              className="text-white/35 text-[clamp(14px,1.6vw,17px)] mt-4 max-w-md mx-auto"
+              className="text-white/35 text-[clamp(13px,3.4vw,17px)] mt-3 sm:mt-4 max-w-md mx-auto text-balance"
               style={{
                 lineHeight: 1.6,
                 animation: "riseIn 600ms ease-out 380ms both",
               }}
             >
-              Empresas registradas en AndesMP, 
-              <br />
-              Cada una, una experiencia única.
+              Empresas registradas en AndesMP,
+              <br className="hidden sm:block" /> Cada una, una experiencia
+              única.
             </p>
           </div>
 
-          <div
-            className="mt-7 flex flex-col items-center"
-            style={{ animation: "riseIn 600ms ease-out 480ms both" }}
-          >
-            <button
-              type="button"
-              className="relative flex items-center gap-2.5 px-7 py-3.5 bg-white rounded-xl text-[#1e1e1e] hover:bg-white/90 transition-all cursor-pointer"
-              style={{ boxShadow: CTA_SHADOW }}
-            >
-              <span
-                className="absolute inset-0 rounded-xl"
-                style={{
-                  boxShadow:
-                    "0 0 20px 4px rgba(255,255,255,0.12), 0 0 40px 8px rgba(255,255,255,0.06)",
-                  animation: "heroGlow 3s ease-in-out infinite",
-                }}
-              />
-              <UploadIcon className="w-4 h-4 relative z-[1]" />
-              <span className="text-[13px] font-bold relative z-[1]">
-                Upload image
-              </span>
-            </button>
-
-            <div className="flex items-center gap-2 mt-3.5 text-[12px] text-white/20">
-              <span>or drag &amp; drop</span>
-              <span className="text-white/10">·</span>
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-0.5">
-                  <Kbd small>Ctrl</Kbd>
-                  <Kbd small>V</Kbd>
-                </div>
-                <span className="text-white/20">paste from clipboard</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full mt-8">
+          <div className="w-full mt-7 sm:mt-9">
             <TemplateGrid size={LOCKED_SIZE} />
           </div>
 
-          <div
-            className="flex flex-col items-center gap-6 py-10"
-            style={{ paddingLeft: 20, paddingRight: 20 }}
-          >
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-              {SHORTCUTS.map((shortcut) => (
-                <div key={shortcut.label} className="flex items-center gap-1.5">
-                  <div className="flex items-center gap-0.5">
-                    {shortcut.keys.map((key) => (
-                      <Kbd key={key}>{key}</Kbd>
-                    ))}
-                  </div>
-                  <span className="text-[11px] text-white/20">
-                    {shortcut.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
+          <div className="flex flex-col items-center gap-6 px-4 sm:px-5 py-8 sm:py-10">
             <span className="text-[12px] text-white/25 flex items-center gap-1.5">
-              Created by
+              Creado por
               <a
-                href="https://x.com/dannpetty"
+                href="https://andesmp.site"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white/40 hover:text-white/70 transition-colors"
               >
-                @DannPetty
+                @TeamAndesMP
               </a>
             </span>
           </div>
