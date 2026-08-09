@@ -56,6 +56,7 @@ export default async function EmpresaPage({
           </div>
         </div>
 
+        {empresa.destacados.length > 0 && (
         <div className="mt-5 sm:mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
           {empresa.destacados.map((destacado) => (
             <div
@@ -84,11 +85,13 @@ export default async function EmpresaPage({
             </div>
           ))}
         </div>
+        )}
 
         <div className="mt-5 sm:mt-6">
           <EmpresaTabs empresa={empresa} />
         </div>
 
+        {empresa.redes.length > 0 && (
         <div className={`${PANEL} mt-5 sm:mt-6 px-5 py-5 sm:px-6 sm:py-6`}>
           <h2 className="text-[13px] font-bold text-white/80">Redes</h2>
           <div className="mt-3.5 flex flex-wrap gap-2.5">
@@ -105,6 +108,7 @@ export default async function EmpresaPage({
             ))}
           </div>
         </div>
+        )}
 
         <p className="mt-10 text-center text-[12px] text-white/25">
           Creado por{" "}

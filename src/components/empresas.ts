@@ -51,9 +51,11 @@ export type Empresa = {
 export const EMPRESAS: Empresa[] = [
   {
     slug: "turintours",
-    name: "Torin Tours",
+    name: "Turin Tours",
     estado: "Activa",
-    image: "/empresas/TorinTours.jpg",
+    image: "/empresas/TurinTours-card.jpg",
+    banner: "/empresas/Turintours-banner.jpg",
+    logo: "/empresas/Turintours-logo.jpg",
     descripcion:
       "Empresa de transporte de pasajeros dentro de AndesMP. Convoyes semanales, rutas por toda la sierra y ambiente tranquilo para conductores nuevos y veteranos.",
     fundada: "2025",
@@ -95,6 +97,30 @@ export const EMPRESAS: Empresa[] = [
       { nombre: "TruckersMP", url: "#" },
       { nombre: "YouTube", url: "#" },
     ],
+  },
+  {
+    slug: "Turismo Cautivo",
+    name: "Turismo Cautivo",
+    estado: "Reclutando",
+    image: "/empresas/cautivo-card.png",
+    banner: "/empresas/cautivo-banner.png",
+    logo: "/empresas/cautivo-logo.jpeg",
+    // TODO: datos pendientes de confirmar con la empresa.
+    descripcion: "Empresa registrada en AndesMP.",
+    fundada: "2025",
+    conductores: 0,
+    cupo: 15,
+    stats: {
+      kmTotal: "0 km",
+      trabajos: "0",
+      millasReal: "0 km",
+      millasRealRank: "—",
+      kmCarrera: "0 km",
+      kmCarreraRank: "—",
+    },
+    destacados: [],
+    miembros: [],
+    redes: [],
   },
 ];
 

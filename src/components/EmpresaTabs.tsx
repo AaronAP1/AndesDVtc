@@ -131,7 +131,9 @@ export function EmpresaTabs({ empresa }: { empresa: Empresa }) {
             </ul>
           ) : (
             <p className="text-center text-[12px] text-white/25 py-6">
-              Ningún miembro coincide con la búsqueda.
+              {empresa.miembros.length === 0
+                ? "Esta empresa todavía no tiene miembros registrados."
+                : "Ningún miembro coincide con la búsqueda."}
             </p>
           )}
 
