@@ -9,7 +9,14 @@ const PANEL_SHADOW =
 const TRIGGER_SHADOW =
   "0 4px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.06)";
 
-export function SizeSelector({ value }: { value: SizeId }) {
+export function SizeSelector({
+  value,
+  /** `false` cuando lo coloca otro componente, como la barra de sesión. */
+  anclado = true,
+}: {
+  value: SizeId;
+  anclado?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const current = getSize(value);
@@ -31,7 +38,9 @@ export function SizeSelector({ value }: { value: SizeId }) {
   }, [open]);
 
   return (
-    <div className="absolute top-3 right-3 sm:top-5 sm:right-5 z-30">
+    <div
+      className={anclado ? "absolute top-3 right-3 sm:top-5 sm:right-5 z-30" : ""}
+    >
       <div className="relative" ref={wrapperRef}>
         <button
           type="button"

@@ -1,5 +1,19 @@
 type IconProps = { className?: string };
 
+export function SteamIcon({ className }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M11.98 2C6.53 2 2.06 6.2 1.64 11.54l5.5 2.27a3.06 3.06 0 0 1 1.74-.54h.16l2.45-3.55v-.05a4.09 4.09 0 1 1 4.09 4.09h-.1l-3.5 2.5v.13a3.07 3.07 0 0 1-6.09.53l-3.94-1.63A10 10 0 1 0 11.98 2Zm-4.7 15.16.63.26a2.3 2.3 0 1 0 1.32-3.02l-.65-.27a2.3 2.3 0 0 1-1.3 3.03Zm11.13-8.42a2.72 2.72 0 1 0-5.45 0 2.72 2.72 0 0 0 5.45 0Zm-4.77 0a2.05 2.05 0 1 1 4.1 0 2.05 2.05 0 0 1-4.1 0Z" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ className }: IconProps) {
   return (
     <svg

@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CompanyMember, LeaderboardRow } from "@/lib/api";
+import { km, rolLabel, rolStyle } from "@/lib/estilos";
 import { Avatar } from "./Avatar";
-import { Empresa, ROL_STYLES } from "./empresas";
 import { SearchIcon, UsersIcon } from "./icons";
 
 const PANEL = "rounded-[10px] border border-white/[0.06] bg-white/[0.02]";
@@ -17,26 +18,45 @@ const normalizar = (texto: string) =>
 
 type Tab = "acerca" | "miembros";
 
-export function EmpresaTabs({ empresa }: { empresa: Empresa }) {
+export function EmpresaTabs({
+  nombre,
+  descripcion,
+  estado,
+  fundada,
+  conductores,
+  cupo,
+  trabajos,
+  miembros,
+  ranking,
+}: {
+  nombre: string;
+  descripcion: string | null;
+  estado: string;
+  fundada: string;
+  conductores: number;
+  cupo: number;
+  trabajos: number;
+  miembros: CompanyMember[];
+  ranking: LeaderboardRow[];
+}) {
   const [tab, setTab] = useState<Tab>("miembros");
   const [query, setQuery] = useState("");
   const [porPagina, setPorPagina] = useState(PAGE_SIZES[2]);
 
   const encontrados = useMemo(() => {
     const termino = normalizar(query.trim());
-    if (!termino) return empresa.miembros;
-    return empresa.miembros.filter(
+    if (!termino) return miembros;
+    return miembros.filter(
       (miembro) =>
-        normalizar(miembro.nombre).includes(termino) ||
-        normalizar(miembro.rol).includes(termino),
+        normalizar(miembro.displayName).includes(termino) ||
+        normalizar(rolLabel(miembro.role)).includes(termino),
     );
-  }, [query, empresa.miembros]);
+  }, [query, miembros]);
 
   const visibles = encontrados.slice(0, porPagina);
 
   return (
     <div className={PANEL}>
-      {/* Pestañas */}
       <div className="flex items-center gap-1 px-2 sm:px-3 border-b border-white/[0.06]">
         <TabButton
           activo={tab === "acerca"}
@@ -48,24 +68,51 @@ export function EmpresaTabs({ empresa }: { empresa: Empresa }) {
           onClick={() => setTab("miembros")}
           label="Miembros"
           icon={<UsersIcon className="w-3.5 h-3.5" />}
-          badge={empresa.miembros.length}
+          badge={miembros.length}
         />
       </div>
 
       {tab === "acerca" ? (
         <div className="p-5 sm:p-6 flex flex-col gap-5">
           <p className="text-[13px] leading-relaxed text-white/50 max-w-2xl">
-            {empresa.descripcion}
+            {descripcion ?? `${nombre} es una empresa registrada en AndesMP.`}
           </p>
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Dato termino="Estado" valor={empresa.estado} />
-            <Dato termino="Fundada" valor={empresa.fundada} />
-            <Dato
-              termino="Conductores"
-              valor={`${empresa.conductores} / ${empresa.cupo}`}
-            />
-            <Dato termino="Trabajos" valor={empresa.stats.trabajos} />
+            <Dato termino="Estado" valor={estado} />
+            <Dato termino="Fundada" valor={fundada} />
+            <Dato termino="Conductores" valor={`${conductores} / ${cupo}`} />
+            <Dato termino="Trabajos" valor={String(trabajos)} />
           </dl>
+
+          {ranking.length > 0 && (
+            <div>
+              <h3 className="text-[12px] font-bold text-white/70">
+                Ranking de kilómetros
+              </h3>
+              <ol className="mt-3 flex flex-col gap-2">
+                {ranking.map((fila, indice) => (
+                  <li
+                    key={fila.driverId}
+                    className="flex items-center gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-4 py-2.5"
+                  >
+                    <span className="w-5 shrink-0 text-[11px] font-bold text-white/25 tabular-nums">
+                      {indice + 1}
+                    </span>
+                    <Avatar nombre={fila.displayName} size={28} />
+                    <span className="min-w-0 flex-1 text-[12px] font-semibold text-white/80 truncate">
+                      {fila.displayName}
+                    </span>
+                    <span className="text-[11px] text-white/30 shrink-0 tabular-nums">
+                      {fila.jobsCount} trabajos
+                    </span>
+                    <span className="text-[12px] font-bold text-blue-400 shrink-0 tabular-nums">
+                      {km(fila.distanceKm)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </div>
       ) : (
         <div className="p-5 sm:p-6 flex flex-col gap-5">
@@ -110,28 +157,31 @@ export function EmpresaTabs({ empresa }: { empresa: Empresa }) {
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
               {visibles.map((miembro) => (
                 <li
-                  key={miembro.nombre}
+                  key={miembro.driverId}
                   className="flex items-center gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 hover:bg-white/[0.05] transition-colors"
                 >
-                  <Avatar nombre={miembro.nombre} src={miembro.avatar} />
+                  <Avatar nombre={miembro.displayName} />
                   <span className="min-w-0">
                     <span className="block text-[12px] font-semibold text-white/80 truncate">
-                      {miembro.nombre}
+                      {miembro.displayName}
                     </span>
                     <span
-                      className={`block text-[10px] font-semibold ${
-                        ROL_STYLES[miembro.rol]
-                      }`}
+                      className={`block text-[10px] font-semibold ${rolStyle(
+                        miembro.role,
+                      )}`}
                     >
-                      {miembro.rol}
+                      {rolLabel(miembro.role)}
                     </span>
+                  </span>
+                  <span className="ml-auto text-[10px] text-white/25 shrink-0 tabular-nums">
+                    {km(miembro.totalDistanceKm)}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-center text-[12px] text-white/25 py-6">
-              {empresa.miembros.length === 0
+              {miembros.length === 0
                 ? "Esta empresa todavía no tiene miembros registrados."
                 : "Ningún miembro coincide con la búsqueda."}
             </p>

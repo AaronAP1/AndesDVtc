@@ -1,15 +1,32 @@
-"use client";
-
-import { SizeSelector } from "@/components/SizeSelector";
-import { TemplateGrid } from "@/components/TemplateGrid";
+import { BarraSesion } from "@/components/BarraSesion";
+import { EmpresaCard, TemplateGrid } from "@/components/TemplateGrid";
 import { LOCKED_SIZE } from "@/components/sizes";
+import { getCompanies } from "@/lib/api";
+import { imagenDe } from "@/lib/presentacion";
 
 const PILL_SHADOW =
   "0 4px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.06)";
 
 const HERO_WORDS = ["Andes", "Map", "Empresas"];
 
-export default function Home() {
+export default async function Home() {
+  const respuesta = await getCompanies();
+  const error = respuesta === null;
+
+  const lista = respuesta ?? [];
+  const mapaEmpresas = Object.fromEntries(
+    lista.map((empresa) => [empresa.id, empresa.slug]),
+  );
+
+  const empresas: EmpresaCard[] = lista.map((empresa) => ({
+    slug: empresa.slug,
+    name: empresa.name,
+    estado: empresa.status,
+    image: imagenDe(empresa.slug, "card", empresa.cardImageUrl),
+    conductores: empresa.memberCount,
+    cupo: empresa.maxDrivers,
+  }));
+
   return (
     <div className="flex flex-col items-center size-full bg-[#0D0D0D] select-none overflow-hidden relative min-h-screen">
       {/* Patrón de puntos con deriva lenta */}
@@ -43,7 +60,7 @@ export default function Home() {
         </div>
       </div>
 
-      <SizeSelector value={LOCKED_SIZE} />
+      <BarraSesion empresas={mapaEmpresas} conSelectorDeTamano />
 
       <div
         className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden"
@@ -89,7 +106,11 @@ export default function Home() {
           </div>
 
           <div className="w-full mt-7 sm:mt-9">
-            <TemplateGrid size={LOCKED_SIZE} />
+            <TemplateGrid
+              size={LOCKED_SIZE}
+              empresas={empresas}
+              error={error}
+            />
           </div>
 
           <div className="flex flex-col items-center gap-6 px-4 sm:px-5 py-8 sm:py-10">

@@ -1,12 +1,13 @@
 "use client";
 
-import { ESTADOS, Estado } from "./empresas";
+import { EstadoEmpresa } from "@/lib/api";
+import { ESTADOS, ESTADO_LABEL } from "@/lib/presentacion";
 import { SearchIcon } from "./icons";
 
 const FIELD_SHADOW =
   "0 4px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.06)";
 
-export type EstadoFiltro = Estado | "Todas";
+export type EstadoFiltro = EstadoEmpresa | "Todas";
 
 const FILTROS: EstadoFiltro[] = ["Todas", ...ESTADOS];
 
@@ -53,6 +54,8 @@ export function SearchBar({
       <div className="flex flex-wrap items-center justify-center gap-1.5">
         {FILTROS.map((filtro) => {
           const activo = filtro === estado;
+          const etiqueta =
+            filtro === "Todas" ? "Todas" : ESTADO_LABEL[filtro] ?? filtro;
           return (
             <button
               key={filtro}
@@ -65,7 +68,7 @@ export function SearchBar({
                   : "text-white/30 hover:text-white/60 hover:bg-white/5"
               }`}
             >
-              {filtro}
+              {etiqueta}
             </button>
           );
         })}
