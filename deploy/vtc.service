@@ -1,0 +1,38 @@
+# Servicio del front VTC (Next.js standalone).
+# Instalar en el VPS:
+#   sudo cp /srv/AndesDVtc/deploy/vtc.service /etc/systemd/system/vtc.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now vtc
+[Unit]
+Description=AndesMP VTC (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=andes
+Group=andes
+WorkingDirectory=/srv/vtc-app
+
+# HOSTNAME=127.0.0.1 es deliberado: el proceso NO escucha en 0.0.0.0, asi que
+# nadie puede alcanzarlo por la IP publica saltandose nginx y el TLS.
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+# API_URL la leen los componentes de servidor en cada request (runtime).
+# NEXT_PUBLIC_API_URL no va aqui: se incrusta en el JS del navegador durante
+# el build, ponerla ahora no tendria ningun efecto.
+Environment=API_URL=https://api.andesmp.site
+
+ExecStart=/usr/bin/node server.js
+
+Restart=always
+RestartSec=5
+
+# Endurecimiento basico.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/vtc-app
+
+[Install]
+WantedBy=multi-user.target
