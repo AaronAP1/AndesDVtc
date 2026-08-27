@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EstadoEmpresa } from "@/lib/api";
 import { ESTADO_LABEL, ESTADO_STYLES, esExterna } from "@/lib/presentacion";
-import { CrearEmpresa } from "./CrearEmpresa";
-import { UsersIcon } from "./icons";
+import { PlusIcon, UsersIcon } from "./icons";
 import { EstadoFiltro, SearchBar } from "./SearchBar";
 import { SizeId, getSize } from "./sizes";
 
@@ -96,14 +95,25 @@ export function TemplateGrid({
               className="relative w-full rounded-[10px] overflow-hidden"
               style={{ paddingBottom }}
             >
-              <CrearEmpresa className="absolute inset-0 flex flex-col items-center justify-center gap-2 cursor-pointer rounded-[10px] border border-dashed border-white/12 bg-white/[0.02] text-white/30 transition-all duration-300 hover:border-white/25 hover:bg-white/[0.04] hover:text-white/60 disabled:cursor-wait" />
+              {/* Aviso, no botón: las empresas no se abren solas desde la
+                  web. El formulario sigue en CrearEmpresa.tsx por si se
+                  vuelve a habilitar. */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center rounded-[10px] border border-dashed border-white/12 bg-white/[0.02] text-white/30">
+                <PlusIcon className="w-7 h-7" />
+                <span className="text-[11px] font-semibold">
+                  Formar empresa
+                </span>
+                <span className="text-[10px] leading-relaxed text-white/25 text-balance">
+                  Habla con soporte por WhatsApp o Discord.
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-2 mt-2.5 px-0.5">
               <span className="text-[11px] font-semibold text-white/45 truncate">
                 Formar empresa
               </span>
-              <span className="text-[10px] text-white/20 shrink-0">Nuevo</span>
+              <span className="text-[10px] text-white/20 shrink-0">Soporte</span>
             </div>
           </div>
         </div>
