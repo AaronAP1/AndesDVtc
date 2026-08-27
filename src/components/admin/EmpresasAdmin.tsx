@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { CampoImagen } from "@/components/CampoImagen";
 import { SearchIcon } from "@/components/icons";
 import {
   AdminCompany,
+  AdminDriver,
   CambiosEmpresa,
+  NuevaEmpresa,
+  crearEmpresaAdmin,
   editarEmpresa,
+  listarConductores,
   listarEmpresas,
   useRecurso,
 } from "@/lib/admin";
@@ -24,6 +29,7 @@ export function EmpresasAdmin() {
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState("");
   const [editando, setEditando] = useState<AdminCompany | null>(null);
+  const [creando, setCreando] = useState(false);
 
   const puede = usePuedeAdministrar();
   const { datos, cargando, error, recargar } = useRecurso(
@@ -44,6 +50,13 @@ export function EmpresasAdmin() {
             className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-white/25 outline-none"
           />
         </div>
+        <button
+          type="button"
+          onClick={() => setCreando(true)}
+          className="rounded-[10px] bg-rose-600 hover:bg-rose-500 px-4 py-2.5 text-[12px] font-bold text-white transition-colors cursor-pointer shrink-0"
+        >
+          Crear empresa
+        </button>
         <select
           value={filtro}
           onChange={(evento) => setFiltro(evento.target.value)}
@@ -147,10 +160,24 @@ export function EmpresasAdmin() {
         </EstadoCarga>
       </div>
 
+      {creando && (
+        <ModalCrear
+          onCerrar={() => setCreando(false)}
+          onCreada={() => {
+            setCreando(false);
+            recargar();
+          }}
+        />
+      )}
+
       {editando && (
         <ModalEditar
           empresa={editando}
-          onCerrar={() => setEditando(null)}
+          onCerrar={() => {
+            setEditando(null);
+            // Puede haberse subido una imagen aunque no se pulse Guardar.
+            recargar();
+          }}
           onGuardado={() => {
             setEditando(null);
             recargar();
@@ -176,6 +203,11 @@ function ModalEditar({
     description: empresa.description ?? "",
     status: empresa.status,
     maxDrivers: String(empresa.maxDrivers),
+  });
+  // Las imágenes van por su endpoint y se guardan al elegirlas, así que no
+  // entran en el cuerpo del PATCH: si entraran, guardar con este estado ya
+  // viejo pisaría la que se acabara de subir.
+  const [imagenes, setImagenes] = useState({
     cardImageUrl: empresa.cardImageUrl ?? "",
     bannerUrl: empresa.bannerUrl ?? "",
     logoUrl: empresa.logoUrl ?? "",
@@ -197,11 +229,6 @@ function ModalEditar({
     if (datos.status !== empresa.status) cambios.status = datos.status;
     if (Number(datos.maxDrivers) !== empresa.maxDrivers)
       cambios.maxDrivers = Number(datos.maxDrivers);
-    if (datos.cardImageUrl !== (empresa.cardImageUrl ?? ""))
-      cambios.cardImageUrl = datos.cardImageUrl;
-    if (datos.bannerUrl !== (empresa.bannerUrl ?? ""))
-      cambios.bannerUrl = datos.bannerUrl;
-    if (datos.logoUrl !== (empresa.logoUrl ?? "")) cambios.logoUrl = datos.logoUrl;
 
     if (Object.keys(cambios).length === 0) {
       setGuardando(false);
@@ -270,24 +297,54 @@ function ModalEditar({
               ayuda="No puede quedar por debajo de los activos."
             />
           </div>
-          <Campo
-            etiqueta="Imagen de tarjeta (16:9)"
-            valor={datos.cardImageUrl}
-            onChange={(cardImageUrl) => setDatos({ ...datos, cardImageUrl })}
-            marcador="https://…"
-          />
-          <Campo
-            etiqueta="Banner (3:1)"
-            valor={datos.bannerUrl}
-            onChange={(bannerUrl) => setDatos({ ...datos, bannerUrl })}
-            marcador="https://…"
-          />
-          <Campo
-            etiqueta="Logo (1:1)"
-            valor={datos.logoUrl}
-            onChange={(logoUrl) => setDatos({ ...datos, logoUrl })}
-            marcador="https://…"
-          />
+          <div className="border-t border-white/[0.06] pt-4">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-white/30">
+              Imágenes
+            </span>
+            <p className="mt-1 text-[10px] text-white/25">
+              Se suben al elegirlas, sin esperar a guardar.
+            </p>
+            <div className="mt-4 flex flex-col gap-4">
+              <CampoImagen
+                companyId={empresa.id}
+                tipo="banner"
+                url={imagenes.bannerUrl}
+                onCambio={(ficha) =>
+                  setImagenes({
+                    cardImageUrl: ficha.cardImageUrl ?? "",
+                    bannerUrl: ficha.bannerUrl ?? "",
+                    logoUrl: ficha.logoUrl ?? "",
+                  })
+                }
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <CampoImagen
+                  companyId={empresa.id}
+                  tipo="card"
+                  url={imagenes.cardImageUrl}
+                  onCambio={(ficha) =>
+                    setImagenes({
+                      cardImageUrl: ficha.cardImageUrl ?? "",
+                      bannerUrl: ficha.bannerUrl ?? "",
+                      logoUrl: ficha.logoUrl ?? "",
+                    })
+                  }
+                />
+                <CampoImagen
+                  companyId={empresa.id}
+                  tipo="logo"
+                  url={imagenes.logoUrl}
+                  onCambio={(ficha) =>
+                    setImagenes({
+                      cardImageUrl: ficha.cardImageUrl ?? "",
+                      bannerUrl: ficha.bannerUrl ?? "",
+                      logoUrl: ficha.logoUrl ?? "",
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {error && (
@@ -314,6 +371,221 @@ function ModalEditar({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Alta de una empresa desde el panel. Antes no había ningún camino:
+ * `POST /v1/companies` deja como propietario a quien llama —que aquí sería
+ * el administrador, no el líder de la VTC—, así que registrar una empresa
+ * para otra persona pasaba por tocar la base de datos a mano.
+ */
+function ModalCrear({
+  onCerrar,
+  onCreada,
+}: {
+  onCerrar: () => void;
+  onCreada: () => void;
+}) {
+  const [datos, setDatos] = useState({
+    name: "",
+    tag: "",
+    slug: "",
+    description: "",
+    maxDrivers: "15",
+  });
+  const [lider, setLider] = useState<AdminDriver | null>(null);
+  const [creando, setCreando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const valido =
+    datos.name.trim().length >= 3 &&
+    /^[A-Z0-9]{2,8}$/.test(datos.tag.trim().toUpperCase());
+
+  async function crear() {
+    setCreando(true);
+    setError(null);
+
+    const cuerpo: NuevaEmpresa = {
+      name: datos.name.trim(),
+      tag: datos.tag.trim().toUpperCase(),
+    };
+    if (datos.slug.trim()) cuerpo.slug = datos.slug.trim();
+    if (datos.description.trim()) cuerpo.description = datos.description.trim();
+    if (Number(datos.maxDrivers) > 0) cuerpo.maxDrivers = Number(datos.maxDrivers);
+    if (lider) cuerpo.ownerDriverId = lider.id;
+
+    try {
+      await crearEmpresaAdmin(cuerpo);
+      onCreada();
+    } catch (fallo) {
+      setError((fallo as Error).message);
+      setCreando(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:p-8"
+      onClick={onCerrar}
+    >
+      <div
+        className="w-full max-w-[560px] rounded-[10px] border border-white/[0.08] bg-[#141414] p-6"
+        onClick={(evento) => evento.stopPropagation()}
+      >
+        <h2 className="text-[16px] font-bold text-white">Crear empresa</h2>
+        <p className="mt-1 text-[11px] leading-relaxed text-white/30">
+          Con un líder elegido, la empresa nace con su propietario puesto en la
+          misma operación. Sin él queda sin dueño y hay que asignarlo desde
+          Miembros.
+        </p>
+
+        <div className="mt-5 flex flex-col gap-4">
+          <Campo
+            etiqueta="Nombre"
+            valor={datos.name}
+            onChange={(name) => setDatos({ ...datos, name })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Campo
+              etiqueta="Tag"
+              valor={datos.tag}
+              onChange={(tag) => setDatos({ ...datos, tag: tag.toUpperCase() })}
+              ayuda="2 a 8, mayúsculas y números."
+            />
+            <Campo
+              etiqueta="Cupo"
+              valor={datos.maxDrivers}
+              onChange={(maxDrivers) => setDatos({ ...datos, maxDrivers })}
+              tipo="number"
+            />
+          </div>
+          <Campo
+            etiqueta="Slug"
+            valor={datos.slug}
+            onChange={(slug) => setDatos({ ...datos, slug })}
+            ayuda="Opcional: si lo dejas vacío se genera del nombre."
+          />
+          <Campo
+            etiqueta="Descripción"
+            valor={datos.description}
+            onChange={(description) => setDatos({ ...datos, description })}
+            multilinea
+          />
+          <BuscadorLider seleccionado={lider} onElegir={setLider} />
+        </div>
+
+        {error && (
+          <p className="mt-4 rounded-[8px] border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200/80">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-6 flex justify-end gap-2.5">
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="rounded-[10px] px-4 py-2.5 text-[12px] font-semibold text-white/40 hover:text-white transition-colors cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={crear}
+            disabled={creando || !valido}
+            className="rounded-[10px] bg-rose-600 hover:bg-rose-500 px-5 py-2.5 text-[12px] font-bold text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {creando ? "Creando…" : "Crear empresa"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Busca al conductor que quedará como propietario. */
+function BuscadorLider({
+  seleccionado,
+  onElegir,
+}: {
+  seleccionado: AdminDriver | null;
+  onElegir: (conductor: AdminDriver | null) => void;
+}) {
+  const [busqueda, setBusqueda] = useState("");
+
+  const { datos, cargando } = useRecurso(
+    `lider:${busqueda}`,
+    () => listarConductores({ q: busqueda || undefined, limit: 6 }),
+    busqueda.trim().length >= 2,
+  );
+
+  if (seleccionado) {
+    return (
+      <div className="flex items-center gap-3 rounded-[10px] border border-white/[0.08] bg-black/20 px-3.5 py-2.5">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[10px] uppercase tracking-wide text-white/30">
+            Propietario
+          </span>
+          <span className="block text-[13px] font-semibold text-white/85 truncate">
+            {seleccionado.displayName}
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={() => onElegir(null)}
+          className="text-[11px] font-semibold text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
+        >
+          Quitar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-white/30">
+        Propietario
+      </span>
+      <div className="flex items-center gap-2.5 rounded-[10px] border border-white/[0.08] bg-black/20 px-3.5 py-2.5 focus-within:border-white/20 transition-colors">
+        <SearchIcon className="w-4 h-4 text-white/30 shrink-0" />
+        <input
+          value={busqueda}
+          onChange={(evento) => setBusqueda(evento.target.value)}
+          placeholder="Buscar conductor por nombre"
+          className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-white/20 outline-none"
+        />
+      </div>
+
+      {busqueda.trim().length >= 2 && (
+        <div className="rounded-[10px] border border-white/[0.06] bg-black/20 divide-y divide-white/[0.06] max-h-[180px] overflow-y-auto">
+          {cargando && (
+            <p className="px-3.5 py-2.5 text-[11px] text-white/25">Buscando…</p>
+          )}
+          {!cargando && (datos?.items ?? []).length === 0 && (
+            <p className="px-3.5 py-2.5 text-[11px] text-white/25">
+              Ningún conductor coincide.
+            </p>
+          )}
+          {(datos?.items ?? []).map((conductor) => (
+            <button
+              key={conductor.id}
+              type="button"
+              onClick={() => onElegir(conductor)}
+              className="w-full text-left px-3.5 py-2.5 hover:bg-white/[0.04] transition-colors cursor-pointer"
+            >
+              <span className="block text-[12px] font-semibold text-white/80 truncate">
+                {conductor.displayName}
+              </span>
+              <span className="block text-[10px] text-white/25">
+                {conductor.companyName
+                  ? `Ya está en ${conductor.companyName}`
+                  : "Sin empresa"}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

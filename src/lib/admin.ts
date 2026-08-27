@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EstadoEmpresa } from "./api";
-import { API_PUBLICA } from "./sesion";
+import { llamar } from "./cliente";
+
+export { ErrorApi } from "./cliente";
 
 /**
  * Las llamadas de administración van desde el navegador para que viaje la
@@ -65,45 +67,6 @@ export type AuditEntry = {
   after: unknown;
 };
 
-export class ErrorApi extends Error {
-  constructor(
-    readonly estado: number,
-    mensaje: string,
-  ) {
-    super(mensaje);
-  }
-}
-
-async function llamar<T>(ruta: string, init?: RequestInit): Promise<T> {
-  const respuesta = await fetch(`${API_PUBLICA}${ruta}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      accept: "application/json",
-      ...(init?.body ? { "content-type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-
-  if (!respuesta.ok) {
-    let mensaje = `Error ${respuesta.status}`;
-    try {
-      const cuerpo = await respuesta.json();
-      if (cuerpo?.message) {
-        mensaje = Array.isArray(cuerpo.message)
-          ? cuerpo.message.join(", ")
-          : cuerpo.message;
-      }
-    } catch {
-      // Respuesta sin JSON: nos quedamos con el código.
-    }
-    throw new ErrorApi(respuesta.status, mensaje);
-  }
-
-  if (respuesta.status === 204) return undefined as T;
-  return (await respuesta.json()) as T;
-}
-
 /**
  * El listado de conductores viene paginado. La API documenta que trae un
  * `total`; aceptamos las envolturas más habituales por si cambia el nombre.
@@ -148,6 +111,27 @@ export function listarEmpresas(opciones: { q?: string; status?: string } = {}) {
     `/v1/admin/companies${cadena ? `?${cadena}` : ""}`,
   );
 }
+
+/**
+ * Alta de una empresa desde el panel. `ownerDriverId` deja al líder puesto
+ * en la misma transacción: si se omite, la empresa nace sin propietario y
+ * hay que asignarlo después desde Miembros.
+ */
+export type NuevaEmpresa = {
+  name: string;
+  tag: string;
+  slug?: string;
+  description?: string;
+  status?: EstadoEmpresa;
+  maxDrivers?: number;
+  ownerDriverId?: string;
+};
+
+export const crearEmpresaAdmin = (datos: NuevaEmpresa) =>
+  llamar<AdminCompany>("/v1/admin/companies", {
+    method: "POST",
+    body: JSON.stringify(datos),
+  });
 
 export type CambiosEmpresa = Partial<{
   name: string;

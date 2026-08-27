@@ -60,7 +60,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <BarraSesion empresas={mapaEmpresas} conSelectorDeTamano />
+      <BarraSesion empresas={mapaEmpresas} conTop />
 
       <div
         className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden"

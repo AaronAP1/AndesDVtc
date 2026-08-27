@@ -34,15 +34,24 @@ export type CompanyDetail = CompanyListItem & {
   minDistanceRatio: string;
 };
 
+/**
+ * Las dos cifras van separadas y las dos son de ESTA empresa: `jobsCount` y
+ * `totalDistanceKm` cuentan sólo lo validado —la misma base que el ranking y
+ * que el perfil del conductor—, y los `...Todos` son lo mismo sin filtrar,
+ * que es lo que necesita ver quien gestiona para saber qué queda por revisar.
+ */
 export type CompanyMember = {
   driverId: string;
   displayName: string;
+  avatarUrl: string;
   role: "owner" | "manager" | "driver" | string;
   status: string;
-  joinedAt: string;
+  joinedAt: string | null;
   jobsCount: number;
   /** Decimal serializado como texto por la API. */
   totalDistanceKm: string;
+  jobsCountTodos: number;
+  totalDistanceKmTodos: string;
 };
 
 export type LeaderboardRow = {
@@ -50,7 +59,25 @@ export type LeaderboardRow = {
   displayName: string;
   jobsCount: number;
   distanceKm: string;
-  revenue: string;
+  revenue: number;
+};
+
+/** Una fila del Top global: la del ranking de empresa más su empresa. */
+export type LeaderboardGlobalRow = LeaderboardRow & {
+  rank: number;
+  avatarUrl: string;
+  companyId: string | null;
+  companyName: string | null;
+  companyTag: string | null;
+  companySlug: string | null;
+};
+
+export type PaginaLeaderboard = {
+  period: "all" | "month";
+  total: number;
+  limit: number;
+  offset: number;
+  items: LeaderboardGlobalRow[];
 };
 
 export type DriverProfile = {
@@ -65,13 +92,49 @@ export type DriverProfile = {
   role: "owner" | "manager" | "driver" | null;
 };
 
-export type DriverStats = {
-  driverId: string;
+/** Totales de un conductor. Sólo cuentan los trabajos entregados y válidos. */
+export type TotalesConductor = {
   jobsCount: number;
   totalDistanceKm: string;
-  totalRevenue: string;
-  avgCargoDamage: string;
-  byDay: { day: string; distanceKm: string; jobsCount: number }[];
+  totalRevenue: number;
+  avgCargoDamage: number;
+};
+
+/**
+ * Los totales de arriba son de SIEMPRE, no de la ventana pedida: `days`
+ * recorta `byDay` y alimenta `window`, que trae esos mismos totales acotados.
+ */
+export type DriverStats = TotalesConductor & {
+  driverId: string;
+  days: number;
+  window: TotalesConductor & { days: number; since: string };
+  byDay: {
+    day: string;
+    distanceKm: string;
+    jobsCount: number;
+    revenue: number;
+  }[];
+};
+
+export type DriverListItem = {
+  id: string;
+  displayName: string;
+  avatarUrl: string;
+  createdAt: string;
+  companyId: string | null;
+  companyName: string | null;
+  companyTag: string | null;
+  companySlug: string | null;
+  companyRole: "owner" | "manager" | "driver" | null;
+  jobsCount: number;
+  totalDistanceKm: string;
+};
+
+export type PaginaDrivers = {
+  items: DriverListItem[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 export type Job = {
@@ -106,11 +169,14 @@ export class ApiCaida extends Error {}
  * 404 ahí le diría a los buscadores que la empresa dejó de existir, cuando
  * en realidad es un corte pasajero.
  */
-async function pedir<T>(ruta: string): Promise<T | null> {
+async function pedir<T>(
+  ruta: string,
+  revalidate = REVALIDATE,
+): Promise<T | null> {
   let respuesta: Response;
   try {
     respuesta = await fetch(`${API_URL}${ruta}`, {
-      next: { revalidate: REVALIDATE },
+      next: { revalidate },
       headers: { accept: "application/json" },
     });
   } catch {
@@ -163,13 +229,134 @@ export const getDriverStats = (id: string, days = 30) =>
 export function getJobs(filtros: {
   companyId?: string;
   driverId?: string;
+  /** `pending`, `valid`, `suspicious` o `invalid`. */
+  validationStatus?: string;
+  /** Fechas `YYYY-MM-DD`, inclusive. Evitan recorrer el historial por cursor. */
+  from?: string;
+  to?: string;
   limit?: number;
   cursor?: string;
 }) {
   const parametros = new URLSearchParams();
   if (filtros.companyId) parametros.set("companyId", filtros.companyId);
   if (filtros.driverId) parametros.set("driverId", filtros.driverId);
+  if (filtros.validationStatus)
+    parametros.set("validationStatus", filtros.validationStatus);
+  if (filtros.from) parametros.set("from", filtros.from);
+  if (filtros.to) parametros.set("to", filtros.to);
   parametros.set("limit", String(filtros.limit ?? 10));
   if (filtros.cursor) parametros.set("cursor", filtros.cursor);
   return pedir<PaginaJobs>(`/v1/jobs?${parametros}`);
+}
+
+/** Listado público: incluye a los conductores sin empresa. */
+export function getDrivers(opciones: {
+  q?: string;
+  limit?: number;
+  offset?: number;
+} = {}) {
+  const parametros = new URLSearchParams();
+  if (opciones.q) parametros.set("q", opciones.q);
+  parametros.set("limit", String(opciones.limit ?? 50));
+  parametros.set("offset", String(opciones.offset ?? 0));
+  return pedir<PaginaDrivers>(`/v1/drivers?${parametros}`);
+}
+
+/** Segundos de caché del Top. */
+const REVALIDATE_TOP = 300;
+
+export type FilaTop = {
+  driverId: string;
+  displayName: string;
+  empresaNombre: string | null;
+  empresaSlug: string | null;
+  jobsCount: number;
+  distanceKm: number;
+  revenue: number;
+};
+
+export const getLeaderboard = (
+  periodo: "all" | "month",
+  limit = 200,
+  offset = 0,
+) =>
+  pedir<PaginaLeaderboard>(
+    `/v1/leaderboard?period=${periodo}&limit=${limit}&offset=${offset}`,
+    REVALIDATE_TOP,
+  );
+
+const aFila = (fila: LeaderboardGlobalRow): FilaTop => ({
+  driverId: fila.driverId,
+  displayName: fila.displayName,
+  empresaNombre: fila.companyName,
+  empresaSlug: fila.companySlug,
+  jobsCount: fila.jobsCount,
+  distanceKm: Number(fila.distanceKm ?? 0),
+  revenue: fila.revenue ?? 0,
+});
+
+export type FilaTopEmpresa = {
+  companyId: string;
+  nombre: string;
+  slug: string | null;
+  tag: string | null;
+  conductores: number;
+  jobsCount: number;
+  distanceKm: number;
+  revenue: number;
+};
+
+/**
+ * El ranking de empresas sale de sumar el de conductores por empresa: cada
+ * fila del leaderboard ya trae la suya, así que no cuesta ninguna petición
+ * más. Quien no tiene empresa no suma a nadie.
+ */
+function porEmpresa(filas: LeaderboardGlobalRow[]): FilaTopEmpresa[] {
+  const cuentas = new Map<string, FilaTopEmpresa>();
+
+  for (const fila of filas) {
+    if (!fila.companyId) continue;
+    const previa = cuentas.get(fila.companyId) ?? {
+      companyId: fila.companyId,
+      nombre: fila.companyName ?? "Empresa",
+      slug: fila.companySlug,
+      tag: fila.companyTag,
+      conductores: 0,
+      jobsCount: 0,
+      distanceKm: 0,
+      revenue: 0,
+    };
+    previa.conductores += 1;
+    previa.jobsCount += fila.jobsCount ?? 0;
+    previa.distanceKm += Number(fila.distanceKm ?? 0);
+    previa.revenue += fila.revenue ?? 0;
+    cuentas.set(fila.companyId, previa);
+  }
+
+  return [...cuentas.values()].sort((a, b) => b.distanceKm - a.distanceKm);
+}
+
+/**
+ * El Top salía de juntar el ranking de cada empresa y, para el mensual, el
+ * `byDay` de cada conductor: una petición por empresa y otra por conductor.
+ * `/v1/leaderboard` lo resuelve en una llamada por periodo, y además incluye
+ * a los conductores sin empresa, que antes no había manera de enumerar.
+ *
+ * Los cuatro cuadros del Top —conductores y empresas, del mes y de siempre—
+ * salen de esas dos llamadas.
+ */
+export async function getTop(limit = 200) {
+  const [historico, mensual] = await Promise.all([
+    getLeaderboard("all", limit),
+    getLeaderboard("month", limit),
+  ]);
+  if (!historico) return null;
+
+  const deSiempre = historico.items;
+  const delMes = mensual?.items ?? [];
+
+  return {
+    conductores: { total: deSiempre.map(aFila), mes: delMes.map(aFila) },
+    empresas: { total: porEmpresa(deSiempre), mes: porEmpresa(delMes) },
+  };
 }

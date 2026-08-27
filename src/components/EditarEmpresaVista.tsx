@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CambiosPropios, editarMiEmpresa } from "@/lib/acciones";
 import { CompanyDetail } from "@/lib/api";
 import { entrar, useSesion } from "@/lib/sesion";
 import { BarraSesion, MapaEmpresas } from "./BarraSesion";
+import { CampoImagen } from "./CampoImagen";
 import { FondoPuntos } from "./FondoPuntos";
 import { SteamIcon } from "./icons";
 
@@ -22,18 +25,63 @@ export function EditarEmpresaVista({
   empresas: MapaEmpresas;
 }) {
   const estado = useSesion();
+  const router = useRouter();
+  // Las imágenes se suben por su cuenta y devuelven la ficha entera, así que
+  // la empresa vive en el estado: la del servidor se queda vieja al instante.
+  const [ficha, setFicha] = useState(empresa);
   const [datos, setDatos] = useState({
-    name: empresa.name,
-    tag: empresa.tag,
     description: empresa.description ?? "",
     website: empresa.website ?? "",
     discordUrl: empresa.discordUrl ?? "",
   });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [guardado, setGuardado] = useState(false);
 
+  const sesion = estado.estado === "dentro" ? estado.sesion : null;
+  // Un admin de plataforma también pasa el permiso en la API, pero para eso
+  // tiene el panel: esto es el escaparate del dueño.
   const esDueno =
-    estado.estado === "dentro" &&
-    estado.sesion.companyId === empresa.id &&
-    estado.sesion.companyRole === "owner";
+    sesion?.companyId === empresa.id && sesion?.companyRole === "owner";
+
+  function actualizarFicha(actualizada: CompanyDetail) {
+    setFicha(actualizada);
+    // La ficha pública la pinta el servidor con caché.
+    router.refresh();
+  }
+
+  async function guardar(evento: React.FormEvent) {
+    evento.preventDefault();
+    setGuardando(true);
+    setError(null);
+    setGuardado(false);
+
+    // Sólo se manda lo que cambió: la API rechaza un cuerpo sin cambios.
+    const cambios: CambiosPropios = {};
+    if (datos.description !== (ficha.description ?? ""))
+      cambios.description = datos.description;
+    if (datos.website !== (ficha.website ?? ""))
+      cambios.website = datos.website.trim() || null;
+    if (datos.discordUrl !== (ficha.discordUrl ?? ""))
+      cambios.discordUrl = datos.discordUrl.trim() || null;
+
+    if (Object.keys(cambios).length === 0) {
+      setGuardando(false);
+      return setGuardado(true);
+    }
+
+    try {
+      setFicha(await editarMiEmpresa(ficha.id, cambios));
+      setGuardado(true);
+      // La ficha la pinta el servidor con caché: sin esto los cambios no se
+      // verían al volver a /empresa/<slug>.
+      router.refresh();
+    } catch (fallo) {
+      setError((fallo as Error).message);
+    } finally {
+      setGuardando(false);
+    }
+  }
 
   return (
     <div className="relative min-h-screen bg-[#0D0D0D] overflow-x-hidden">
@@ -89,29 +137,46 @@ export function EditarEmpresaVista({
 
         {esDueno && (
           <>
-            <p className="mt-6 rounded-[10px] border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-[12px] text-amber-200/80">
-              La API todavía no expone un endpoint para guardar estos cambios.
-              El formulario queda listo y se activa en cuanto exista
-              <code className="mx-1 rounded bg-black/30 px-1.5 py-0.5 text-[11px]">
-                PATCH /v1/companies/{"{id}"}
-              </code>
-              .
+            <p className="mt-6 text-[12px] leading-relaxed text-white/35">
+              El nombre, el tag, la dirección y el cupo no están aquí: son la
+              identidad pública de la VTC y los lleva un administrador.
             </p>
 
+            <div className={`${PANEL} mt-4 p-6`}>
+              <h2 className="text-[13px] font-bold text-white/80">Imágenes</h2>
+              <p className="mt-1 text-[11px] leading-relaxed text-white/30">
+                Se guardan al elegirlas, sin pasar por el botón de abajo. La
+                API las recorta y las convierte a WebP, así que la que verás
+                aquí es ya la definitiva.
+              </p>
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="sm:col-span-2">
+                  <CampoImagen
+                    companyId={ficha.id}
+                    tipo="banner"
+                    url={ficha.bannerUrl ?? ""}
+                    onCambio={actualizarFicha}
+                  />
+                </div>
+                <CampoImagen
+                  companyId={ficha.id}
+                  tipo="card"
+                  url={ficha.cardImageUrl ?? ""}
+                  onCambio={actualizarFicha}
+                />
+                <CampoImagen
+                  companyId={ficha.id}
+                  tipo="logo"
+                  url={ficha.logoUrl ?? ""}
+                  onCambio={actualizarFicha}
+                />
+              </div>
+            </div>
+
             <form
-              className={`${PANEL} mt-4 p-6 flex flex-col gap-5`}
-              onSubmit={(evento) => evento.preventDefault()}
+              className={`${PANEL} mt-5 p-6 flex flex-col gap-5`}
+              onSubmit={guardar}
             >
-              <Campo
-                etiqueta="Nombre"
-                valor={datos.name}
-                onChange={(name) => setDatos({ ...datos, name })}
-              />
-              <Campo
-                etiqueta="Tag"
-                valor={datos.tag}
-                onChange={(tag) => setDatos({ ...datos, tag })}
-              />
               <Campo
                 etiqueta="Descripción"
                 valor={datos.description}
@@ -130,13 +195,30 @@ export function EditarEmpresaVista({
                 onChange={(discordUrl) => setDatos({ ...datos, discordUrl })}
                 marcador="https://discord.gg/"
               />
+              {error && (
+                <p className="rounded-[8px] border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200/80">
+                  {error}
+                </p>
+              )}
+
+              {guardado && !error && (
+                <p className="rounded-[8px] border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-200/80">
+                  Cambios guardados.{" "}
+                  <Link
+                    href={`/empresa/${slug}`}
+                    className="font-bold underline underline-offset-2"
+                  >
+                    Ver la ficha
+                  </Link>
+                </p>
+              )}
 
               <button
                 type="submit"
-                disabled
-                className="self-start rounded-[10px] bg-rose-600 px-5 py-2.5 text-[12px] font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={guardando}
+                className="self-start rounded-[10px] bg-rose-600 hover:bg-rose-500 px-5 py-2.5 text-[12px] font-bold text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Guardar cambios
+                {guardando ? "Guardando…" : "Guardar cambios"}
               </button>
             </form>
           </>
@@ -152,12 +234,14 @@ function Campo({
   onChange,
   multilinea = false,
   marcador,
+  ayuda,
 }: {
   etiqueta: string;
   valor: string;
   onChange: (valor: string) => void;
   multilinea?: boolean;
   marcador?: string;
+  ayuda?: string;
 }) {
   const clases =
     "w-full rounded-[10px] border border-white/[0.08] bg-black/20 px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/20 outline-none focus:border-white/20 transition-colors";
@@ -183,6 +267,7 @@ function Campo({
           className={clases}
         />
       )}
+      {ayuda && <span className="text-[10px] text-white/25">{ayuda}</span>}
     </label>
   );
 }

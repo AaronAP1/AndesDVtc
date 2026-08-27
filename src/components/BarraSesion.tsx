@@ -5,9 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { entrar, salir, useSesion } from "@/lib/sesion";
-import { ChevronDownIcon, SteamIcon, UsersIcon } from "./icons";
-import { SizeSelector } from "./SizeSelector";
-import { LOCKED_SIZE } from "./sizes";
+import { ChevronDownIcon, SteamIcon, TrophyIcon, UsersIcon } from "./icons";
 
 const PILL_SHADOW =
   "0 4px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.06)";
@@ -19,20 +17,26 @@ export type MapaEmpresas = Record<string, string>;
 
 export function BarraSesion({
   empresas,
-  conSelectorDeTamano = false,
+  conTop = false,
 }: {
   empresas: MapaEmpresas;
-  conSelectorDeTamano?: boolean;
+  /** El botón del Top sólo se ancla en el listado. */
+  conTop?: boolean;
 }) {
   const estado = useSesion();
   const ruta = usePathname();
 
   return (
     <div className="absolute top-3 right-3 sm:top-5 sm:right-5 z-30 flex items-center gap-2.5">
-      {conSelectorDeTamano && (
-        <div className="hidden sm:block">
-          <SizeSelector value={LOCKED_SIZE} anclado={false} />
-        </div>
+      {conTop && (
+        <Link
+          href="/top"
+          className="flex items-center gap-2 rounded-[10px] backdrop-blur-xl bg-[#0D0D0D]/80 px-4 py-3.5 text-[13px] font-bold text-white hover:bg-white/[0.08] transition-colors"
+          style={{ boxShadow: PILL_SHADOW }}
+        >
+          <TrophyIcon className="w-[18px] h-[18px] text-amber-400" />
+          Top
+        </Link>
       )}
 
       {estado.estado === "cargando" && (

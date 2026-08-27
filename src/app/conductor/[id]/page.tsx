@@ -125,11 +125,11 @@ export default async function ConductorPage({
           />
           <Ficha
             valor={String(stats?.jobsCount ?? 0)}
-            etiqueta="Trabajos"
+            etiqueta="Trabajos válidos"
             color="text-blue-400"
           />
           <Ficha
-            valor={`${Math.round(Number(stats?.avgCargoDamage ?? 0) * 100)}%`}
+            valor={`${(Number(stats?.avgCargoDamage ?? 0) * 100).toFixed(1)}%`}
             etiqueta="Daño medio a la carga"
             color="text-orange-400"
           />
@@ -153,6 +153,10 @@ export default async function ConductorPage({
           <h2 className="text-[13px] font-bold text-white/80">
             Últimos trabajos
           </h2>
+          <p className="mt-1 text-[11px] text-white/30">
+            Incluye los que el validador descartó; las cifras de arriba sólo
+            cuentan los válidos.
+          </p>
           <div className="mt-3">
             <TrabajosTabla trabajos={trabajos?.items ?? []} />
           </div>

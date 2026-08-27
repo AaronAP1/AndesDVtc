@@ -2,13 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
-import { AccionHub } from "@/components/AccionHub";
+import { AccionesEmpresa } from "@/components/AccionesEmpresa";
 import { BarraSesion } from "@/components/BarraSesion";
 import { EmpresaTabs } from "@/components/EmpresaTabs";
+import { SolicitudesEmpresa } from "@/components/SolicitudesEmpresa";
 import { FondoPuntos } from "@/components/FondoPuntos";
 import { UsersIcon } from "@/components/icons";
 import {
   CompanyMember,
+  LeaderboardRow,
   getCompanies,
   sinFallar,
   getCompanyBySlug,
@@ -17,7 +19,7 @@ import {
   getJobs,
   getReviewQueue,
 } from "@/lib/api";
-import { km } from "@/lib/estilos";
+import { fecha, km } from "@/lib/estilos";
 import {
   ESTADO_LABEL,
   ESTADO_STYLES,
@@ -51,7 +53,8 @@ export default async function EmpresaPage({
 
   const [miembros, ranking, trabajos, revision, listado] = await Promise.all([
     getCompanyMembers(detalle.id),
-    getCompanyLeaderboard(detalle.id, 10),
+    // Pedimos el ranking completo: de ahí salen los totales de la empresa.
+    getCompanyLeaderboard(detalle.id, Math.max(detalle.memberCount, 25)),
     getJobs({ companyId: detalle.id, limit: 8 }),
     getReviewQueue(detalle.id),
     sinFallar(getCompanies),
@@ -64,18 +67,25 @@ export default async function EmpresaPage({
   const mapa = Object.fromEntries(
     (listado ?? []).map((item) => [item.id, item.slug]),
   );
-  const lista = miembros ?? [];
+  // `members` devuelve también a quien se fue o fue expulsado: la flota
+  // pública son sólo los activos, que es lo que cuenta `memberCount`.
+  const lista = (miembros ?? []).filter(
+    (miembro) => miembro.status === "active",
+  );
   const conductores = lista.length || detalle.memberCount;
 
-  const totales = lista.reduce(
-    (acumulado, miembro) => ({
-      km: acumulado.km + Number(miembro.totalDistanceKm ?? 0),
-      trabajos: acumulado.trabajos + (miembro.jobsCount ?? 0),
+  // Los totales salen del ranking, que cuenta sólo los trabajos válidos.
+  // `members` ahora usa esa misma base —y deja lo no validado en los campos
+  // `...Todos`—, así que las dos cifras coinciden.
+  const totales = (ranking ?? []).reduce(
+    (acumulado, fila) => ({
+      km: acumulado.km + Number(fila.distanceKm ?? 0),
+      trabajos: acumulado.trabajos + (fila.jobsCount ?? 0),
     }),
     { km: 0, trabajos: 0 },
   );
 
-  const destacados = calcularDestacados(lista);
+  const destacados = calcularDestacados(lista, ranking ?? []);
   const redes = [
     detalle.discordUrl && { nombre: "Discord", url: detalle.discordUrl },
     detalle.website && { nombre: "Web", url: detalle.website },
@@ -213,10 +223,11 @@ export default async function EmpresaPage({
               </div>
 
               <div className="mt-auto">
-                <AccionHub
-                  etiqueta="Unirse a la empresa"
-                  detalle="La solicitud se envía desde el hub de AndesMP, dentro del juego: es donde tu cuenta de Steam queda vinculada al conductor. Cuando la mandes, quedará pendiente hasta que un gestor de la empresa la apruebe."
-                  className="w-full rounded-[10px] bg-rose-600 hover:bg-rose-500 px-4 py-2.5 text-[12px] font-bold text-white transition-colors cursor-pointer"
+                <AccionesEmpresa
+                  companyId={detalle.id}
+                  nombre={detalle.name}
+                  slug={slug}
+                  lleno={conductores >= cupo}
                 />
               </div>
             </div>
@@ -235,7 +246,7 @@ export default async function EmpresaPage({
                 />
                 <Tarjeta
                   valor={String(totales.trabajos)}
-                  etiqueta="Trabajos"
+                  etiqueta="Trabajos válidos"
                   color="text-violet-400"
                 />
                 <Tarjeta
@@ -285,6 +296,8 @@ export default async function EmpresaPage({
             ))}
           </div>
         )}
+
+        <SolicitudesEmpresa companyId={detalle.id} nombre={detalle.name} />
 
         <div className="mt-5 sm:mt-6">
           <EmpresaTabs
@@ -338,34 +351,56 @@ export default async function EmpresaPage({
 }
 
 /** Los destacados salen de los totales de cada miembro, no hay endpoint propio. */
-function calcularDestacados(miembros: CompanyMember[]) {
-  if (miembros.length === 0) return [];
+/**
+ * Distancia y trabajos salen del ranking, que cuenta sólo los válidos, para
+ * que no contradigan a las cifras de la cabecera. La antigüedad sale de
+ * `members`, el único sitio donde viene `joinedAt`.
+ */
+function calcularDestacados(
+  miembros: CompanyMember[],
+  ranking: LeaderboardRow[],
+) {
+  const destacados: {
+    titulo: string;
+    miembro: string;
+    detalle?: string;
+  }[] = [];
 
-  const porKm = [...miembros].sort(
-    (a, b) => Number(b.totalDistanceKm) - Number(a.totalDistanceKm),
+  const porKm = [...ranking].sort(
+    (a, b) => Number(b.distanceKm) - Number(a.distanceKm),
   )[0];
-  const porTrabajos = [...miembros].sort((a, b) => b.jobsCount - a.jobsCount)[0];
-  const veterano = [...miembros].sort(
-    (a, b) => +new Date(a.joinedAt) - +new Date(b.joinedAt),
-  )[0];
-
-  return [
-    {
+  if (porKm && Number(porKm.distanceKm) > 0) {
+    destacados.push({
       titulo: "Mayor distancia recorrida",
       miembro: porKm.displayName,
-      detalle: km(porKm.totalDistanceKm),
-    },
-    {
+      detalle: km(porKm.distanceKm),
+    });
+  }
+
+  const porTrabajos = [...ranking].sort((a, b) => b.jobsCount - a.jobsCount)[0];
+  if (porTrabajos && porTrabajos.jobsCount > 0) {
+    destacados.push({
       titulo: "La mayoría de los trabajos",
       miembro: porTrabajos.displayName,
-      detalle: `${porTrabajos.jobsCount} trabajos`,
-    },
-    {
+      detalle: `${porTrabajos.jobsCount} ${
+        porTrabajos.jobsCount === 1 ? "trabajo" : "trabajos"
+      }`,
+    });
+  }
+
+  // `joinedAt` viene vacío mientras la solicitud está pendiente.
+  const veterano = miembros
+    .filter((miembro) => miembro.joinedAt)
+    .sort((a, b) => +new Date(a.joinedAt!) - +new Date(b.joinedAt!))[0];
+  if (veterano) {
+    destacados.push({
       titulo: "Miembro más antiguo",
       miembro: veterano.displayName,
-      detalle: new Date(veterano.joinedAt).toLocaleDateString("es-PE"),
-    },
-  ];
+      detalle: fecha(veterano.joinedAt!),
+    });
+  }
+
+  return destacados;
 }
 
 function Resumen({ termino, valor }: { termino: string; valor: string }) {

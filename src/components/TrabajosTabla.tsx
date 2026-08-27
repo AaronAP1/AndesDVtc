@@ -94,7 +94,10 @@ export function TrabajosTabla({
                       className="ml-1.5 text-[10px] text-white/25"
                       title={trabajo.validationFlags.join(", ")}
                     >
-                      {trabajo.validationFlags.length} avisos
+                      {trabajo.validationFlags.length}{" "}
+                      {trabajo.validationFlags.length === 1
+                        ? "aviso"
+                        : "avisos"}
                     </span>
                   )}
                 </td>

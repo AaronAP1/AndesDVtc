@@ -16,9 +16,9 @@ export const SIZE_OPTIONS: SizeOption[] = [
 ];
 
 /**
- * El selector de tamaño queda fijado en "X Wide": es el valor inicial y el
- * único seleccionable. Para permitir el cambio, borra `LOCKED_SIZE` y deja que
- * `SizeSelector` actualice el estado con la opción elegida.
+ * Las tarjetas del listado van fijas en "X Wide" (16:9). El selector que
+ * dejaba elegir otra proporción se retiró cuando ese hueco pasó a ser el
+ * botón del Top.
  */
 export const LOCKED_SIZE: SizeId = "wide";
 
