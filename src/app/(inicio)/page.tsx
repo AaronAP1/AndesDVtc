@@ -1,7 +1,7 @@
 import { BarraSesion } from "@/components/BarraSesion";
 import { EmpresaCard, TemplateGrid } from "@/components/TemplateGrid";
 import { LOCKED_SIZE } from "@/components/sizes";
-import { getCompanies } from "@/lib/api";
+import { getCompanies, sinFallar } from "@/lib/api";
 import { imagenDe } from "@/lib/presentacion";
 
 const PILL_SHADOW =
@@ -10,7 +10,7 @@ const PILL_SHADOW =
 const HERO_WORDS = ["Andes", "Map", "Empresas"];
 
 export default async function Home() {
-  const respuesta = await getCompanies();
+  const respuesta = await sinFallar(getCompanies);
   const error = respuesta === null;
 
   const lista = respuesta ?? [];

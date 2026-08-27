@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EstadoEmpresa } from "@/lib/api";
 import { ESTADO_LABEL, ESTADO_STYLES, esExterna } from "@/lib/presentacion";
+import { AccionHub } from "./AccionHub";
 import { PlusIcon, UsersIcon } from "./icons";
 import { EstadoFiltro, SearchBar } from "./SearchBar";
 import { SizeId, getSize } from "./sizes";
@@ -95,15 +96,16 @@ export function TemplateGrid({
               className="relative w-full rounded-[10px] overflow-hidden"
               style={{ paddingBottom }}
             >
-              <button
-                type="button"
+              <AccionHub
+                etiqueta="Formar empresa"
+                detalle="Las empresas se crean desde el hub de AndesMP, dentro del juego. Quien la crea queda como propietario en el acto. Si necesitas una empresa y no puedes usar el hub, pídeselo a un administrador."
                 className="absolute inset-0 flex flex-col items-center justify-center gap-2 cursor-pointer rounded-[10px] border border-dashed border-white/12 bg-white/[0.02] text-white/30 transition-all duration-300 hover:border-white/25 hover:bg-white/[0.04] hover:text-white/60"
               >
                 <PlusIcon className="w-7 h-7" />
                 <span className="text-[11px] font-semibold">
                   Formar empresa
                 </span>
-              </button>
+              </AccionHub>
             </div>
 
             <div className="flex items-center justify-between gap-2 mt-2.5 px-0.5">

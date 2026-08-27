@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CompanyMember, LeaderboardRow } from "@/lib/api";
+import { CompanyMember, Job, LeaderboardRow } from "@/lib/api";
+import { TrabajosTabla } from "./TrabajosTabla";
 import { km, rolLabel, rolStyle } from "@/lib/estilos";
 import { Avatar } from "./Avatar";
 import { SearchIcon, UsersIcon } from "./icons";
@@ -16,7 +18,7 @@ const normalizar = (texto: string) =>
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 
-type Tab = "acerca" | "miembros";
+type Tab = "acerca" | "miembros" | "trabajos";
 
 export function EmpresaTabs({
   nombre,
@@ -28,6 +30,8 @@ export function EmpresaTabs({
   trabajos,
   miembros,
   ranking,
+  trabajosRecientes,
+  enRevision,
 }: {
   nombre: string;
   descripcion: string | null;
@@ -38,6 +42,8 @@ export function EmpresaTabs({
   trabajos: number;
   miembros: CompanyMember[];
   ranking: LeaderboardRow[];
+  trabajosRecientes: Job[];
+  enRevision: Job[];
 }) {
   const [tab, setTab] = useState<Tab>("miembros");
   const [query, setQuery] = useState("");
@@ -70,9 +76,39 @@ export function EmpresaTabs({
           icon={<UsersIcon className="w-3.5 h-3.5" />}
           badge={miembros.length}
         />
+        <TabButton
+          activo={tab === "trabajos"}
+          onClick={() => setTab("trabajos")}
+          label="Trabajos"
+          badge={trabajosRecientes.length}
+        />
       </div>
 
-      {tab === "acerca" ? (
+      {tab === "trabajos" ? (
+        <div className="p-5 sm:p-6 flex flex-col gap-5">
+          {enRevision.length > 0 && (
+            <div>
+              <h3 className="text-[12px] font-bold text-amber-300/80">
+                En revisión ({enRevision.length})
+              </h3>
+              <p className="mt-1 text-[11px] text-white/30">
+                Trabajos que el validador marcó para mirar a mano.
+              </p>
+              <div className="mt-3">
+                <TrabajosTabla trabajos={enRevision} conConductor />
+              </div>
+            </div>
+          )}
+          <div>
+            <h3 className="text-[12px] font-bold text-white/70">
+              Últimos trabajos
+            </h3>
+            <div className="mt-3">
+              <TrabajosTabla trabajos={trabajosRecientes} conConductor />
+            </div>
+          </div>
+        </div>
+      ) : tab === "acerca" ? (
         <div className="p-5 sm:p-6 flex flex-col gap-5">
           <p className="text-[13px] leading-relaxed text-white/50 max-w-2xl">
             {descripcion ?? `${nombre} es una empresa registrada en AndesMP.`}
@@ -99,9 +135,12 @@ export function EmpresaTabs({
                       {indice + 1}
                     </span>
                     <Avatar nombre={fila.displayName} size={28} />
-                    <span className="min-w-0 flex-1 text-[12px] font-semibold text-white/80 truncate">
+                    <Link
+                      href={`/conductor/${fila.driverId}`}
+                      className="min-w-0 flex-1 text-[12px] font-semibold text-white/80 truncate hover:text-white transition-colors"
+                    >
                       {fila.displayName}
-                    </span>
+                    </Link>
                     <span className="text-[11px] text-white/30 shrink-0 tabular-nums">
                       {fila.jobsCount} trabajos
                     </span>
@@ -161,8 +200,11 @@ export function EmpresaTabs({
                   className="flex items-center gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 hover:bg-white/[0.05] transition-colors"
                 >
                   <Avatar nombre={miembro.displayName} />
-                  <span className="min-w-0">
-                    <span className="block text-[12px] font-semibold text-white/80 truncate">
+                  <Link
+                    href={`/conductor/${miembro.driverId}`}
+                    className="min-w-0 group"
+                  >
+                    <span className="block text-[12px] font-semibold text-white/80 truncate group-hover:text-white transition-colors">
                       {miembro.displayName}
                     </span>
                     <span
@@ -172,7 +214,7 @@ export function EmpresaTabs({
                     >
                       {rolLabel(miembro.role)}
                     </span>
-                  </span>
+                  </Link>
                   <span className="ml-auto text-[10px] text-white/25 shrink-0 tabular-nums">
                     {km(miembro.totalDistanceKm)}
                   </span>

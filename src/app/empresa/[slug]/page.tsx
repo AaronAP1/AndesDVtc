@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { AccionHub } from "@/components/AccionHub";
 import { BarraSesion } from "@/components/BarraSesion";
 import { EmpresaTabs } from "@/components/EmpresaTabs";
 import { FondoPuntos } from "@/components/FondoPuntos";
@@ -9,10 +10,12 @@ import { UsersIcon } from "@/components/icons";
 import {
   CompanyMember,
   getCompanies,
-  getCompany,
+  sinFallar,
   getCompanyBySlug,
   getCompanyLeaderboard,
   getCompanyMembers,
+  getJobs,
+  getReviewQueue,
 } from "@/lib/api";
 import { km } from "@/lib/estilos";
 import {
@@ -42,16 +45,17 @@ export default async function EmpresaPage({
   params,
 }: PageProps<"/empresa/[slug]">) {
   const { slug } = await params;
-  const resumen = await getCompanyBySlug(slug);
-  if (!resumen) notFound();
-
-  const [detalle, miembros, ranking, listado] = await Promise.all([
-    getCompany(resumen.id),
-    getCompanyMembers(resumen.id),
-    getCompanyLeaderboard(resumen.id, 10),
-    getCompanies(),
-  ]);
+  // by-slug ya devuelve la ficha completa: no hace falta pedir el listado.
+  const detalle = await getCompanyBySlug(slug);
   if (!detalle) notFound();
+
+  const [miembros, ranking, trabajos, revision, listado] = await Promise.all([
+    getCompanyMembers(detalle.id),
+    getCompanyLeaderboard(detalle.id, 10),
+    getJobs({ companyId: detalle.id, limit: 8 }),
+    getReviewQueue(detalle.id),
+    sinFallar(getCompanies),
+  ]);
 
   const estado = detalle.status;
   const cupo = detalle.maxDrivers;
@@ -61,7 +65,7 @@ export default async function EmpresaPage({
     (listado ?? []).map((item) => [item.id, item.slug]),
   );
   const lista = miembros ?? [];
-  const conductores = lista.length || resumen.memberCount;
+  const conductores = lista.length || detalle.memberCount;
 
   const totales = lista.reduce(
     (acumulado, miembro) => ({
@@ -208,12 +212,13 @@ export default async function EmpresaPage({
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="mt-auto w-full rounded-[10px] bg-rose-600 hover:bg-rose-500 px-4 py-2.5 text-[12px] font-bold text-white transition-colors cursor-pointer"
-              >
-                Unirse a la empresa
-              </button>
+              <div className="mt-auto">
+                <AccionHub
+                  etiqueta="Unirse a la empresa"
+                  detalle="La solicitud se envía desde el hub de AndesMP, dentro del juego: es donde tu cuenta de Steam queda vinculada al conductor. Cuando la mandes, quedará pendiente hasta que un gestor de la empresa la apruebe."
+                  className="w-full rounded-[10px] bg-rose-600 hover:bg-rose-500 px-4 py-2.5 text-[12px] font-bold text-white transition-colors cursor-pointer"
+                />
+              </div>
             </div>
           </div>
 
@@ -292,6 +297,8 @@ export default async function EmpresaPage({
             trabajos={totales.trabajos}
             miembros={lista}
             ranking={ranking ?? []}
+            trabajosRecientes={trabajos?.items ?? []}
+            enRevision={revision ?? []}
           />
         </div>
 

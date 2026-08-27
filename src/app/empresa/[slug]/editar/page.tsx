@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { EditarEmpresaVista } from "@/components/EditarEmpresaVista";
-import { getCompanies, getCompany, getCompanyBySlug } from "@/lib/api";
+import {
+  getCompanies,
+  getCompanyBySlug,
+  sinFallar,
+} from "@/lib/api";
 
 
 export async function generateMetadata({
@@ -15,14 +19,10 @@ export default async function EditarEmpresaPage({
 }: PageProps<"/empresa/[slug]/editar">) {
   const { slug } = await params;
 
-  const resumen = await getCompanyBySlug(slug);
-  if (!resumen) notFound();
-
-  const [empresa, listado] = await Promise.all([
-    getCompany(resumen.id),
-    getCompanies(),
-  ]);
+  const empresa = await getCompanyBySlug(slug);
   if (!empresa) notFound();
+
+  const listado = await sinFallar(getCompanies);
 
   const mapa = Object.fromEntries(
     (listado ?? []).map((item) => [item.id, item.slug]),
